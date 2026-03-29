@@ -10,19 +10,34 @@ from datetime import datetime
 
 load_dotenv()
 
-def get_reviews(url):
-    """ホットペッパーからレビューを取得する"""
+def get_reviews(url, max_pages=3):
+    """ホットペッパーから複数ページのレビューを取得する"""
     options = Options()
     options.add_argument("--headless")
     driver = webdriver.Chrome(options=options)
-    driver.get(url)
-    time.sleep(3)
 
-    reviews = driver.find_elements(By.CSS_SELECTOR, "p.mT10.wwbw")
-    review_list = [r.text for r in reviews[:5]]
+    review_list = []
+
+    for page in range(1, max_pages + 1):
+        if page == 1:
+            page_url = url
+        else:
+            page_url = url + f"PN{page}.html"
+
+        print(f"{page}ページ目を取得中...")
+        driver.get(page_url)
+        time.sleep(3)
+
+        reviews = driver.find_elements(By.CSS_SELECTOR, "p.mT10.wwbw")
+        if not reviews:
+            print("レビューがありません。終了します。")
+            break
+
+        for r in reviews:
+            review_list.append(r.text)
+
     driver.quit()
     return review_list
-
 
 def generate_reply(review):
     """Claude APIで返信文を生成する"""
@@ -53,7 +68,7 @@ def save_csv(results):
 
 def main():
     url = "https://beauty.hotpepper.jp/slnH000376942/review/"
-    reviews = get_reviews(url)
+    reviews = get_reviews(url, max_pages=3)
 
     print(f"取得したレビュー数：{len(reviews)}件\n")
     results = []
